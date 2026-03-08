@@ -48,6 +48,7 @@
             user-select: none;
             animation: floatAround linear infinite;
             filter: drop-shadow(0 8px 12px rgba(255, 200, 240, 0.2));
+            will-change: transform; /* аппаратное ускорение */
         }
 
         @keyframes floatAround {
@@ -160,7 +161,6 @@
             transform: scale(0.98);
         }
 
-        /* эмодзи в кнопках */
         .name-btn::after {
             content: attr(data-emoji);
             font-size: 1.8rem;
@@ -236,7 +236,6 @@
             opacity: 0.15;
         }
 
-        /* Тётя Оля — теперь цвет Сестры Кати (тёплый) */
         [data-theme="olya"] .personal-message {
             background: linear-gradient(145deg, #f7c978, #e6846b);
             border-color: #fdd48d;
@@ -251,7 +250,6 @@
             opacity: 0.15;
         }
 
-        /* Сестра Катя — теперь цвет Тёти Оли (зелёный) */
         [data-theme="katya"] .personal-message {
             background: linear-gradient(45deg, #a1d6b0, #3f8f6b);
             border-color: #a8e6be;
@@ -355,83 +353,55 @@
             100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity: 0; }
         }
 
-        /* ===== АДАПТИВНОСТЬ ===== */
-        @media (max-width: 900px) {
+        /* ===== МОБИЛЬНАЯ ОПТИМИЗАЦИЯ ===== */
+        @media (max-width: 768px) {
+            /* Уменьшаем размытие фона */
             .screen {
-                padding: 2.5rem 1.5rem;
-                border-radius: 48px;
+                backdrop-filter: blur(5px);
+                -webkit-backdrop-filter: blur(5px);
             }
+
+            /* Упрощаем фон сообщений — убираем тяжёлые градиенты */
+            [data-theme="mama"] .personal-message,
+            [data-theme="babushka"] .personal-message,
+            [data-theme="lena"] .personal-message,
+            [data-theme="olya"] .personal-message,
+            [data-theme="katya"] .personal-message,
+            [data-theme="anya"] .personal-message {
+                background: rgba(20, 15, 25, 0.7) !important; /* простой тёмный фон */
+                box-shadow: none !important;
+            }
+
+            /* Прячем большие эмодзи-подложки */
+            .personal-message::before {
+                display: none;
+            }
+
+            /* Делаем кнопки чуть меньше и экономнее */
             .name-btn {
-                font-size: 1.5rem;
-                padding: 1rem 2rem;
-                min-width: 180px;
-            }
-            .personal-message {
-                padding: 2rem 1.5rem;
+                padding: 0.8rem 1.2rem;
+                font-size: 1.3rem;
+                min-width: 140px;
             }
         }
 
-        @media (max-width: 600px) {
-            .screen {
-                padding: 2rem 1rem;
-                border-radius: 40px;
-            }
+        /* Дополнительно для очень маленьких экранов */
+        @media (max-width: 480px) {
             .name-btn {
-                font-size: 1.3rem;
-                padding: 0.9rem 1.2rem;
-                min-width: 150px;
+                font-size: 1.1rem;
+                padding: 0.6rem 0.8rem;
+                min-width: 120px;
             }
             .name-btn::after {
-                font-size: 1.5rem;
-            }
-            .instruction {
-                margin: 1.8rem 0 1rem;
+                font-size: 1.2rem;
             }
             .personal-message {
-                font-size: 1.6rem;
-                padding: 1.8rem 1.2rem;
-                border-radius: 50px;
+                padding: 1.5rem 1rem;
+                font-size: 1.3rem;
             }
             .back-btn {
-                font-size: 1.2rem;
-                padding: 0.7rem 2rem;
-            }
-            .mute-btn {
-                top: 15px;
-                right: 15px;
-                width: 48px;
-                height: 48px;
-                font-size: 1.5rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .button-grid {
-                gap: 0.7rem;
-            }
-            .name-btn {
-                font-size: 1.2rem;
-                padding: 0.8rem 1rem;
-                min-width: 130px;
-                flex: 1 1 40%;
-            }
-            .personal-message {
-                font-size: 1.4rem;
-                padding: 1.5rem 1rem;
-            }
-            h1 {
-                margin-bottom: 0.5rem;
-            }
-        }
-
-        @media (max-width: 360px) {
-            .name-btn {
-                font-size: 1rem;
-                padding: 0.7rem 0.5rem;
-                min-width: 110px;
-            }
-            .personal-message {
-                font-size: 1.2rem;
+                padding: 0.6rem 1.5rem;
+                font-size: 1.1rem;
             }
         }
     </style>
@@ -514,7 +484,7 @@
 
             // ========== НАСТРОЙКИ АУДИО ==========
             const VOLUME_NORMAL = 0.05;  // 5% громкость
-            let userMuted = false;       // true = звук выключен (volume 0)
+            let userMuted = false;
 
             function setVolume(volume) {
                 bgMusic.volume = Math.max(0, Math.min(1, volume));
@@ -522,7 +492,7 @@
 
             function updateMuteIcon() {
                 if (bgMusic.paused) {
-                    muteToggle.textContent = '🔇'; // музыка не играет
+                    muteToggle.textContent = '🔇';
                 } else if (userMuted || bgMusic.volume === 0) {
                     muteToggle.textContent = '🔇';
                 } else {
@@ -530,81 +500,42 @@
                 }
             }
 
-            // Попытка воспроизвести музыку с текущими настройками громкости
             function attemptPlay() {
                 if (bgMusic.paused) {
                     bgMusic.play()
                         .then(() => {
-                            // Убедимся, что громкость соответствует состоянию muted
                             setVolume(userMuted ? 0 : VOLUME_NORMAL);
                             updateMuteIcon();
                         })
-                        .catch(e => {
-                            console.log('Не удалось воспроизвести музыку автоматически, ждём клик');
-                            // Не обновляем иконку, она останется 🔇
-                        });
+                        .catch(e => console.log('Музыка не запустилась автоматически, ждём клик'));
                 } else {
-                    // Уже играет — просто синхронизируем громкость и иконку
                     setVolume(userMuted ? 0 : VOLUME_NORMAL);
                     updateMuteIcon();
                 }
             }
 
-            // Переключение mute
             function toggleMute() {
                 if (bgMusic.paused) {
-                    // Если музыка не играет, пытаемся включить (звук будет включён)
                     userMuted = false;
                     attemptPlay();
                 } else {
-                    // Музыка играет, переключаем muted
                     userMuted = !userMuted;
                     setVolume(userMuted ? 0 : VOLUME_NORMAL);
                     updateMuteIcon();
                 }
             }
 
-            // Слушаем кнопку mute
             muteToggle.addEventListener('click', (e) => {
                 e.stopPropagation();
                 toggleMute();
             });
 
-            // При загрузке страницы сразу пытаемся тихо включить музыку
-            window.addEventListener('load', () => {
-                // Начальное состояние: не muted, громкость 5%
-                userMuted = false;
-                setVolume(VOLUME_NORMAL);
-                attemptPlay(); // попытаемся воспроизвести (если браузер разрешит)
-
-                // Также запускаем плавающие элементы
-                createFloatingElements(45);
-                screen2.setAttribute('data-theme', '');
-            });
-
-            // Первый клик по любой части страницы тоже запускает музыку (на всякий случай)
-            document.body.addEventListener('click', function initAudioOnFirstClick() {
-                if (bgMusic.paused) {
-                    attemptPlay();
-                }
-                // Удаляем после первого клика, чтобы не мешать
-                document.body.removeEventListener('click', initAudioOnFirstClick);
-            }, { once: true });
-
-            // При выборе имени тоже запускаем музыку, если она ещё не играет
-            nameBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const name = btn.getAttribute('data-name');
-                    showScreen2(name);
-                    if (bgMusic.paused) {
-                        attemptPlay();
-                    }
-                });
-            });
-
-            // ========== ПЛАВАЮЩИЕ ЭЛЕМЕНТЫ ==========
-            function createFloatingElements(count = 35) {
+            // ========== ПЛАВАЮЩИЕ ЭЛЕМЕНТЫ (с адаптивным количеством) ==========
+            function createFloatingElements() {
+                const isMobile = window.innerWidth <= 768;
+                const count = isMobile ? 10 : 35; // на телефоне всего 10 элементов
                 const symbols = ['🌸', '🌹', '🌺', '🌷', '💐', '❤️', '💖', '💗', '🌼', '🌸', '🌻', '🪷', '🌞'];
+
                 for (let i = 0; i < count; i++) {
                     const el = document.createElement('div');
                     el.className = 'float-item';
@@ -612,16 +543,21 @@
                     el.style.left = Math.random() * 100 + '%';
                     el.style.top = Math.random() * 100 + '%';
                     el.style.fontSize = (0.9 + Math.random() * 2.2) + 'rem';
-                    el.style.animationDuration = (12 + Math.random() * 25) + 's';
+                    // На мобильных анимация будет очень медленной, чтобы не грузить CPU
+                    const duration = isMobile ? 30 + Math.random() * 40 : 12 + Math.random() * 25;
+                    el.style.animationDuration = duration + 's';
                     el.style.animationDelay = Math.random() * 10 + 's';
-                    el.style.opacity = 0.12 + Math.random() * 0.2;
+                    el.style.opacity = isMobile ? 0.1 : 0.12 + Math.random() * 0.2;
                     floatingContainer.appendChild(el);
                 }
             }
 
-            // ========== ВЗРЫВ СЕРДЕЦ ==========
+            // ========== ВЗРЫВ СЕРДЕЦ (с адаптивным количеством) ==========
             function explodeHearts() {
-                for (let i = 0; i < 40; i++) {
+                const isMobile = window.innerWidth <= 768;
+                const heartCount = isMobile ? 10 : 40; // на телефоне 10 сердец
+
+                for (let i = 0; i < heartCount; i++) {
                     const heart = document.createElement('div');
                     heart.className = 'explode-heart';
                     heart.innerHTML = ['❤️', '💖', '💘', '💝', '💗', '🌸', '🌺'][Math.floor(Math.random() * 7)];
@@ -656,10 +592,43 @@
                 screen1.classList.add('hidden');
                 screen2.classList.remove('hidden');
 
-                explodeHearts();
+                explodeHearts(); // взрыв с адаптивным числом сердец
+                attemptPlay();   // пробуем включить музыку, если ещё не играет
             }
 
+            // ========== ОБРАБОТЧИКИ ==========
+            nameBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const name = btn.getAttribute('data-name');
+                    showScreen2(name);
+                });
+            });
+
             backBtn.addEventListener('click', showScreen1);
+
+            // ========== ИНИЦИАЛИЗАЦИЯ ==========
+            window.addEventListener('load', () => {
+                // Начальная громкость и попытка воспроизвести
+                userMuted = false;
+                setVolume(VOLUME_NORMAL);
+                attemptPlay();
+
+                // Создаём плавающие элементы с учётом экрана
+                createFloatingElements();
+
+                screen2.setAttribute('data-theme', '');
+            });
+
+            // Первый клик по странице тоже активирует музыку (на случай блокировки автозапуска)
+            document.body.addEventListener('click', function initAudioOnFirstClick() {
+                if (bgMusic.paused) {
+                    attemptPlay();
+                }
+                document.body.removeEventListener('click', initAudioOnFirstClick);
+            }, { once: true });
+
+            // При изменении размера окна можно пересоздать floating элементы,
+            // но для простоты оставим как есть — они создаются один раз.
         })();
     </script>
 </body>
