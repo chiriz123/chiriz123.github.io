@@ -353,13 +353,6 @@
             100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity: 0; }
         }
 
-        /* ===== МОБИЛЬНАЯ ОПТИМИЗАЦИЯ ===== */
-        @media (max-width: 768px) {
-            /* Уменьшаем размытие фона */
-            .screen {
-                backdrop-filter: blur(5px);
-                -webkit-backdrop-filter: blur(5px);
-            }
 
             /* Упрощаем фон сообщений — убираем тяжёлые градиенты */
             [data-theme="mama"] .personal-message,
@@ -633,3 +626,4 @@
     </script>
 </body>
 </html>
+
