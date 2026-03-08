@@ -353,6 +353,81 @@
             100% { transform: translate(var(--tx), var(--ty)) scale(1.5); opacity: 0; }
         }
 
+        /* ===== ПЛАШКА-ПРЕДУПРЕЖДЕНИЕ (одна кнопка) ===== */
+        .music-prompt {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+
+        .music-prompt.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .prompt-content {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 48px;
+            padding: 2.5rem 3rem;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 30px 50px rgba(0,0,0,0.5);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+
+        .music-prompt.show .prompt-content {
+            transform: scale(1);
+        }
+
+        .prompt-content p {
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            color: white;
+            text-shadow: 0 2px 10px rgba(255, 200, 230, 0.5);
+        }
+
+        .prompt-content button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 60px;
+            padding: 0.8rem 2.5rem;
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: white;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: 0.3s;
+            min-width: 180px;
+            border-color: #ffb6d9;
+            box-shadow: 0 0 15px rgba(255, 150, 200, 0.3);
+        }
+
+        .prompt-content button:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: #ffb6d9;
+            transform: scale(1.03);
+            box-shadow: 0 0 25px #ff99cc;
+        }
+
+        .prompt-content button:active {
+            transform: scale(0.98);
+        }
+
         /* ===== ПОДПИСЬ АВТОРА ===== */
         .credits {
             position: fixed;
@@ -367,7 +442,7 @@
             background: rgba(0,0,0,0.1);
             letter-spacing: 0.5px;
             font-weight: 300;
-            pointer-events: none; /* чтобы не мешать кликам */
+            pointer-events: none;
             user-select: none;
         }
 
@@ -377,6 +452,17 @@
                 bottom: 8px;
                 right: 12px;
                 padding: 3px 8px;
+            }
+            .prompt-content {
+                padding: 1.8rem 1.5rem;
+            }
+            .prompt-content p {
+                font-size: 1.4rem;
+            }
+            .prompt-content button {
+                font-size: 1.3rem;
+                padding: 0.6rem 1.5rem;
+                min-width: 140px;
             }
         }
 
@@ -434,8 +520,16 @@
     <!-- КОНТЕЙНЕР ДЛЯ ВЗРЫВА СЕРДЕЦ -->
     <div class="explosion-container" id="explosionContainer"></div>
 
+    <!-- ПЛАШКА С ПРЕДУПРЕЖДЕНИЕМ О МУЗЫКЕ (одна кнопка) -->
+    <div class="music-prompt" id="musicPrompt">
+        <div class="prompt-content">
+            <p>🎵 На сайте будет играть фонова музыка</p>
+            <button id="promptConfirm">подтвердить</button>
+        </div>
+    </div>
+
     <!-- ПОДПИСЬ АВТОРА -->
-    <div class="credits">✎ автор: Ваик</div>
+    <div class="credits">✎ автор: Vahe</div>
 
     <!-- ЭКРАН 1: ПРИВЕТСТВИЕ И ВЫБОР -->
     <div id="screen1" class="screen">
@@ -493,6 +587,10 @@
             const explosionContainer = document.getElementById('explosionContainer');
             const bgMusic = document.getElementById('bgMusic');
 
+            // Элементы новой плашки
+            const musicPrompt = document.getElementById('musicPrompt');
+            const promptConfirm = document.getElementById('promptConfirm');
+
             const VOLUME_NORMAL = 0.05;
             let userMuted = false;
 
@@ -501,7 +599,13 @@
             }
 
             function updateMuteIcon() {
-                muteToggle.textContent = (bgMusic.paused || userMuted || bgMusic.volume === 0) ? '🔇' : '🔊';
+                if (bgMusic.paused) {
+                    muteToggle.textContent = '🔇';
+                } else if (userMuted || bgMusic.volume === 0) {
+                    muteToggle.textContent = '🔇';
+                } else {
+                    muteToggle.textContent = '🔊';
+                }
             }
 
             function attemptPlay() {
@@ -511,7 +615,9 @@
                             setVolume(userMuted ? 0 : VOLUME_NORMAL);
                             updateMuteIcon();
                         })
-                        .catch(() => {});
+                        .catch(() => {
+                            updateMuteIcon();
+                        });
                 } else {
                     setVolume(userMuted ? 0 : VOLUME_NORMAL);
                     updateMuteIcon();
@@ -590,6 +696,7 @@
                 screen1.classList.add('hidden');
                 screen2.classList.remove('hidden');
                 explodeHearts();
+                // При выборе имени тоже пытаемся включить музыку (если она ещё не играет)
                 attemptPlay();
             }
 
@@ -599,20 +706,45 @@
 
             backBtn.addEventListener('click', showScreen1);
 
-            window.addEventListener('load', () => {
+            // ===== Новая логика плашки: любое подтверждение запускает музыку =====
+            function hidePromptAndPlay() {
+                if (!musicPrompt.classList.contains('show')) return;
+                musicPrompt.classList.remove('show');
+                // Включаем музыку (пользователь согласился)
                 userMuted = false;
-                setVolume(VOLUME_NORMAL);
                 attemptPlay();
-                createFloatingElements();
-                screen2.setAttribute('data-theme', '');
+            }
+
+            // Кнопка "Подтвердить"
+            promptConfirm.addEventListener('click', (e) => {
+                e.stopPropagation(); // предотвращаем двойное срабатывание (но это необязательно)
+                hidePromptAndPlay();
             });
 
-            document.body.addEventListener('click', function initAudioOnFirstClick() {
-                if (bgMusic.paused) attemptPlay();
-                document.body.removeEventListener('click', initAudioOnFirstClick);
-            }, { once: true });
+            // Клик в любом месте документа (вне кнопки) тоже считается подтверждением
+            document.addEventListener('click', function onDocClick(e) {
+                // Если плашка видна, скрываем и запускаем музыку
+                if (musicPrompt.classList.contains('show')) {
+                    hidePromptAndPlay();
+                }
+            });
+
+            // При загрузке показываем плашку
+            window.addEventListener('load', () => {
+                setVolume(VOLUME_NORMAL);
+                userMuted = false;
+                updateMuteIcon(); // иконка будет 🔇, так как музыка не играет
+
+                createFloatingElements();
+                screen2.setAttribute('data-theme', '');
+
+                // Показываем плашку с небольшой задержкой
+                setTimeout(() => {
+                    musicPrompt.classList.add('show');
+                }, 300);
+            });
+
         })();
     </script>
 </body>
 </html>
-
